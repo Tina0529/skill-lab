@@ -1,0 +1,43 @@
+name: Weekly Model Deprecation Report to Lark
+
+on:
+  schedule:
+    # 每周六 日本时间 10:00（UTC 01:00）
+    - cron: '0 1 * * 6'
+  workflow_dispatch:
+
+jobs:
+  weekly-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run deprecation check and send Lark report
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        working-directory: model-deprecation-monitor
+        run: |
+          python scripts/monitor_model_deprecations.py \
+            --config models_in_use.example.json \
+            --lark-webhook "https://open.larksuite.com/open-apis/bot/v2/hook/39413908-9e60-4976-9a5a-436df1ed5054" \
+            --format json \
+            --output report.json
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report-${{ github.run_number }}
+          path: model-deprecation-monitor/report.json
+          retention-days: 90

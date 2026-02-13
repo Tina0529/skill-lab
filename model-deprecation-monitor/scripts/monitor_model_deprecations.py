@@ -649,6 +649,112 @@ def send_lark(webhook_url, alerts, project_name):
         print(f"❌ 飞书通知发送失败: {e}")
 
 
+def send_lark_report(webhook_url, alerts, deprecation_data, project_name):
+    """发送完整的飞书周报（包含所有级别的告警和即将过期模型摘要）"""
+    now = datetime.now()
+    date_str = now.strftime("%Y-%m-%d")
+
+    critical = [a for a in alerts if a["level"] == "CRITICAL"]
+    warnings = [a for a in alerts if a["level"] == "WARNING"]
+    infos = [a for a in alerts if a["level"] == "INFO"]
+
+    # 构建卡片元素
+    elements = []
+
+    # 概览
+    summary = f"📅 **报告日期**：{date_str}\n"
+    summary += f"📊 **项目**：{project_name}\n"
+    summary += f"🚨 紧急：**{len(critical)}** 个  ⚠️ 警告：**{len(warnings)}** 个  ℹ️ 提醒：**{len(infos)}** 个"
+    elements.append({"tag": "markdown", "content": summary})
+    elements.append({"tag": "hr"})
+
+    # CRITICAL
+    if critical:
+        content = "**🚨 紧急告警（7天内停用或已停用）**\n"
+        for a in critical:
+            replacement = ""
+            if a.get("replacement_models"):
+                replacement = f" → {', '.join(a['replacement_models'])}"
+            content += f"- **{a['model']}** ({a['provider']}){replacement}\n"
+            content += f"  {a['message']}\n"
+            if a.get("usage"):
+                content += f"  用途：{a['usage']}\n"
+        elements.append({"tag": "markdown", "content": content})
+        elements.append({"tag": "hr"})
+
+    # WARNING
+    if warnings:
+        content = "**⚠️ 警告（30天内停用）**\n"
+        for a in warnings:
+            content += f"- **{a['model']}** ({a['provider']}): {a['message']}\n"
+        elements.append({"tag": "markdown", "content": content})
+        elements.append({"tag": "hr"})
+
+    # INFO
+    if infos:
+        content = "**ℹ️ 提醒（60天内停用）**\n"
+        for a in infos[:10]:
+            content += f"- **{a['model']}** ({a['provider']}): {a['message']}\n"
+        if len(infos) > 10:
+            content += f"- ... 及其他 {len(infos) - 10} 个\n"
+        elements.append({"tag": "markdown", "content": content})
+        elements.append({"tag": "hr"})
+
+    # 即将过期的热门模型（来自 deprecations.info，不限于项目使用模型）
+    upcoming = sorted(
+        [d for d in deprecation_data if d.get("shutdown_date") and d["shutdown_date"] >= date_str],
+        key=lambda x: x["shutdown_date"],
+    )[:10]
+    if upcoming:
+        content = "**📋 近期过期模型一览（全行业）**\n"
+        for d in upcoming:
+            model_name = d.get("model_id") or d.get("model_name") or d.get("title", "")
+            rep = d.get("replacement_models", [])
+            rep_str = f" → {', '.join(rep)}" if rep else ""
+            content += f"- [{d['provider']}] **{model_name}** 停用：{d['shutdown_date']}{rep_str}\n"
+        elements.append({"tag": "markdown", "content": content})
+
+    # 操作建议
+    if critical or warnings:
+        elements.append({"tag": "hr"})
+        advice = "**💡 操作建议**\n"
+        if critical:
+            advice += f"1. 立即处理 {len(critical)} 个 CRITICAL 告警\n"
+        if warnings:
+            advice += f"2. 本周制定 {len(warnings)} 个 WARNING 模型迁移计划\n"
+        advice += "3. 详细报告见 GitHub Actions Artifacts"
+        elements.append({"tag": "markdown", "content": advice})
+
+    # 确定卡片颜色
+    if critical:
+        template = "red"
+        title = f"🚨 AI 模型过期周报 - {date_str}"
+    elif warnings:
+        template = "orange"
+        title = f"⚠️ AI 模型过期周报 - {date_str}"
+    else:
+        template = "green"
+        title = f"✅ AI 模型过期周报 - {date_str}"
+
+    data = {
+        "msg_type": "interactive",
+        "card": {
+            "header": {
+                "title": {"tag": "plain_text", "content": title},
+                "template": template,
+            },
+            "elements": elements,
+        },
+    }
+
+    try:
+        resp = requests.post(webhook_url, json=data, timeout=TIMEOUT)
+        resp.raise_for_status()
+        print("✅ 飞书周报已发送")
+    except Exception as e:
+        print(f"❌ 飞书周报发送失败: {e}")
+
+
 def send_dingtalk(webhook_url, alerts, project_name):
     """发送钉钉通知"""
     critical = [a for a in alerts if a["level"] == "CRITICAL"]
@@ -710,7 +816,7 @@ def load_config(config_path):
         return json.load(f)
 
 
-def run_check(config_path=None, notify=False, output_format="text", output_file=None):
+def run_check(config_path=None, notify=False, output_format="text", output_file=None, lark_webhook=None):
     """执行模型过期检查"""
     print("🔍 开始检查 AI 模型过期信息...\n")
 
@@ -777,6 +883,10 @@ def run_check(config_path=None, notify=False, output_format="text", output_file=
                 report_text,
             )
 
+    # 发送飞书完整周报（通过 --lark-webhook 参数触发）
+    if lark_webhook:
+        send_lark_report(lark_webhook, alerts, deprecation_data, project_name)
+
     # 返回结果供 Lambda 等使用
     return {
         "critical_count": len([a for a in alerts if a["level"] == "CRITICAL"]),
@@ -793,6 +903,7 @@ def main():
     parser.add_argument("--notify", action="store_true", help="发送通知")
     parser.add_argument("--format", choices=["text", "json", "csv"], default="text", help="输出格式")
     parser.add_argument("--output", help="保存报告到文件")
+    parser.add_argument("--lark-webhook", help="飞书 Webhook URL，发送完整周报")
     args = parser.parse_args()
 
     result = run_check(
@@ -800,6 +911,7 @@ def main():
         notify=args.notify,
         output_format=args.format,
         output_file=args.output,
+        lark_webhook=args.lark_webhook,
     )
 
     # 如果有 CRITICAL 告警，返回非零退出码（用于 CI/CD）
