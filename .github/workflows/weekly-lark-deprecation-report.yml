@@ -27,12 +27,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         working-directory: model-deprecation-monitor
+        # exit code 1 表示有 CRITICAL 告警，对于周报属于正常情况，不视为失败
         run: |
           python scripts/monitor_model_deprecations.py \
             --config models_in_use.example.json \
             --lark-webhook "https://open.larksuite.com/open-apis/bot/v2/hook/39413908-9e60-4976-9a5a-436df1ed5054" \
             --format json \
-            --output report.json
+            --output report.json || true
 
       - name: Upload report artifact
         if: always()
