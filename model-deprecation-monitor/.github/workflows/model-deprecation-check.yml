@@ -1,0 +1,171 @@
+name: AI Model Deprecation Check
+
+on:
+  schedule:
+    # 每天北京时间 10:00（UTC 02:00）执行
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      notify:
+        description: '发送通知到配置的渠道'
+        type: boolean
+        default: true
+
+jobs:
+  check-deprecations:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run deprecation check
+        id: check
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          LARK_WEBHOOK_URL: ${{ secrets.LARK_WEBHOOK_URL }}
+          DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
+        continue-on-error: true
+        run: |
+          cd model-deprecation-monitor
+
+          # 生成 JSON 报告
+          python scripts/monitor_model_deprecations.py \
+            --config models_in_use.example.json \
+            --format json \
+            --output report.json \
+            ${{ (github.event.inputs.notify == 'true' || github.event_name == 'schedule') && '--notify' || '' }}
+
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+          # 同时生成文本报告
+          python scripts/monitor_model_deprecations.py \
+            --config models_in_use.example.json \
+            --output report.txt || true
+
+      - name: Upload report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deprecation-report-${{ github.run_number }}
+          path: |
+            model-deprecation-monitor/report.json
+            model-deprecation-monitor/report.txt
+          retention-days: 90
+
+      - name: Check for critical alerts and create issue
+        if: steps.check.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'model-deprecation-monitor/report.json';
+
+            if (!fs.existsSync(reportPath)) {
+              console.log('Report file not found, skipping issue creation');
+              return;
+            }
+
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            const critical = report.alerts.filter(a => a.level === 'CRITICAL');
+            const warnings = report.alerts.filter(a => a.level === 'WARNING');
+
+            if (critical.length === 0 && warnings.length === 0) {
+              console.log('No critical or warning alerts, skipping issue creation');
+              return;
+            }
+
+            // Check if there's already an open issue
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'model-deprecation',
+              per_page: 1
+            });
+
+            if (existingIssues.data.length > 0) {
+              // Update existing issue
+              const issue = existingIssues.data[0];
+              const body = buildBody(critical, warnings, report);
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: body
+              });
+              console.log(`Updated existing issue #${issue.number}`);
+              return;
+            }
+
+            // Create new issue
+            const body = buildBody(critical, warnings, report);
+            const title = critical.length > 0
+              ? `[CRITICAL] ${critical.length} 个模型即将/已经停用`
+              : `[WARNING] ${warnings.length} 个模型即将过期`;
+
+            // Ensure label exists
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'model-deprecation'
+              });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'model-deprecation',
+                color: 'e11d48',
+                description: 'AI model deprecation alerts'
+              });
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['model-deprecation']
+            });
+
+            function buildBody(critical, warnings, report) {
+              let body = `## AI Model Deprecation Alert\n\n`;
+              body += `**Generated**: ${report.generated_at}\n\n`;
+
+              if (critical.length > 0) {
+                body += `### CRITICAL (${critical.length})\n\n`;
+                for (const a of critical) {
+                  body += `- **${a.model}** (${a.provider}): ${a.message}\n`;
+                  if (a.usage) body += `  - Usage: ${a.usage}\n`;
+                  if (a.config) body += `  - Config: \`${a.config}\`\n`;
+                  if (a.action) body += `  - Action: ${a.action}\n`;
+                }
+                body += '\n';
+              }
+
+              if (warnings.length > 0) {
+                body += `### WARNING (${warnings.length})\n\n`;
+                for (const a of warnings) {
+                  body += `- **${a.model}** (${a.provider}): ${a.message}\n`;
+                  if (a.usage) body += `  - Usage: ${a.usage}\n`;
+                }
+                body += '\n';
+              }
+
+              body += `---\n*Auto-generated by [model-deprecation-monitor](../tree/main/model-deprecation-monitor)*`;
+              return body;
+            }
