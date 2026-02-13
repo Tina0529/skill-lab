@@ -1,0 +1,96 @@
+{
+  "project": "felo-mygpt",
+  "check_interval_days": 1,
+  "alert_thresholds": {
+    "critical_days": 7,
+    "warning_days": 30,
+    "info_days": 60
+  },
+  "notifications": {
+    "slack_webhook": "",
+    "lark_webhook": "",
+    "dingtalk_webhook": "",
+    "email": {
+      "smtp_host": "",
+      "smtp_port": 587,
+      "from": "",
+      "password": "",
+      "recipients": []
+    }
+  },
+  "providers": ["openai", "anthropic", "google"],
+  "models": [
+    {
+      "model_id": "gpt-4o",
+      "provider": "OpenAI",
+      "usage": "主聊天功能 - OpenAI 默认模型",
+      "priority": "critical",
+      "config_location": "mygpt/config/models.py",
+      "fallback_model": "gpt-4.1"
+    },
+    {
+      "model_id": "gpt-4.1",
+      "provider": "OpenAI",
+      "usage": "聊天功能 - 新版默认模型",
+      "priority": "critical",
+      "config_location": "mygpt/config/models.py",
+      "fallback_model": "gpt-4o"
+    },
+    {
+      "model_id": "gpt-4o-2024-11-20",
+      "provider": "OpenAI",
+      "usage": "Agent 系统默认模型",
+      "priority": "high",
+      "config_location": "mygpt/agent/config.py",
+      "fallback_model": "gpt-4o"
+    },
+    {
+      "model_id": "text-embedding-3-small",
+      "provider": "OpenAI",
+      "usage": "文本向量化 - Embedding 默认模型",
+      "priority": "critical",
+      "config_location": "mygpt/rag/embedding.py",
+      "fallback_model": "text-embedding-3-large"
+    },
+    {
+      "model_id": "claude-sonnet-4-5-20250929",
+      "provider": "Anthropic",
+      "usage": "意图识别 + 默认 Claude 模型",
+      "priority": "critical",
+      "config_location": "mygpt/agent/intent.py",
+      "fallback_model": "claude-sonnet-4-5-latest"
+    },
+    {
+      "model_id": "claude-3-5-sonnet-20241022",
+      "provider": "Anthropic",
+      "usage": "备用 Claude 模型",
+      "priority": "medium",
+      "config_location": "mygpt/config/models.py",
+      "fallback_model": "claude-sonnet-4-5-20250929"
+    },
+    {
+      "model_id": "gemini-2.0-flash",
+      "provider": "Google",
+      "usage": "RAG 摘要生成",
+      "priority": "medium",
+      "config_location": "mygpt/rag/summarizer.py",
+      "fallback_model": "gemini-2.5-flash"
+    },
+    {
+      "model_id": "gemini-2.5-flash",
+      "provider": "Google",
+      "usage": "新版 RAG 摘要",
+      "priority": "medium",
+      "config_location": "mygpt/rag/summarizer.py",
+      "fallback_model": "gemini-2.0-flash"
+    },
+    {
+      "model_id": "o3-mini",
+      "provider": "OpenAI",
+      "usage": "推理任务",
+      "priority": "medium",
+      "config_location": "mygpt/agent/reasoning.py",
+      "fallback_model": "o3"
+    }
+  ]
+}

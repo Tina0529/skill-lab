@@ -1,0 +1,28 @@
+{
+  "name": "model-deprecation-monitor",
+  "version": "1.0.0",
+  "description": "AI 模型过期监控与自动提醒系统 - 监控 OpenAI、Anthropic、Google、AWS Bedrock、Azure OpenAI 等厂商的模型生命周期，提前预警即将停用的模型",
+  "author": {
+    "name": "Sparticle Team"
+  },
+  "license": "MIT",
+  "keywords": [
+    "ai-model",
+    "deprecation",
+    "monitor",
+    "openai",
+    "anthropic",
+    "google",
+    "gemini",
+    "aws-bedrock",
+    "azure",
+    "lifecycle",
+    "alert",
+    "reminder"
+  ],
+  "homepage": "https://github.com/sparticleinc/sparticle-toolkit",
+  "repository": "https://github.com/sparticleinc/sparticle-toolkit.git",
+  "skills": [
+    "./skills/model-deprecation-monitor"
+  ]
+}
