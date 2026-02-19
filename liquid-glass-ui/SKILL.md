@@ -18,7 +18,7 @@ description: |
 
   触发词：liquid glass、液态玻璃、毛玻璃、玻璃风格、glassmorphism、Apple风格、
   WWDC风格、iOS 26、Bento Grid、玻璃卡片、折射效果、glass UI
-version: 1.1.0
+version: 1.1.1
 ---
 
 # Liquid Glass UI — 液态玻璃风格 HTML 生成器
@@ -317,6 +317,48 @@ background: linear-gradient(135deg, #0a0015 0%, #050210 30%, #0d1b2a 70%, #1b0a2
 | 副标题 | lg ~ xl (18-20px) | font-light (300) | `text-lg font-light text-gray-300` |
 | 正文 | base (16px) | font-medium (500) | `text-base font-medium` |
 | 辅助文字 | sm (14px) | font-medium (500) | `text-sm font-medium text-white/60` |
+
+### [v1.1.1] 超大字体（Display Typography）使用指南
+
+超大字体（6xl ~ `text-[16rem]`）是 Apple Keynote 风格的标志，但有严格的适用边界。
+
+**判断标准：一张卡片的核心信息能否用 1-3 个词概括？能 → 用大字体；否 → 不用。**
+
+#### 适合使用的场景
+
+| 场景 | 示例 | 说明 |
+|------|------|------|
+| 产品/品牌展示 | "M4 **Ultra**"、"vision**OS 3**" | 一张卡片只传递一个概念 |
+| 数据亮点 / KPI | "**99.9**% uptime"、"**2M+** users" | 数字本身就是最重要的信息 |
+| 单词/短语学习 | "**Ephemeral**"、"**Serendipity**" | 逐字阅读、细细品味 |
+| 倒计时/事件预告 | "**3** days"、"**Jun 9**" | 时间紧迫感需要视觉冲击 |
+| 404/状态页 | "**404**"、"**Nothing here**" | 简单直接，无其他信息竞争 |
+
+#### 不适合使用的场景
+
+| 场景 | 原因 |
+|------|------|
+| 信息密集的表单/表格 | 挤占空间，无法容纳字段 |
+| 长文阅读（文章、文档） | 大字体破坏阅读节奏 |
+| 多层级导航 | 层级关系无法通过字号区分 |
+| 移动端小屏 | 一个词就撑满屏幕，无法扫视 |
+| 同屏超过 3 个大标题 | 互相争夺注意力，全部失效 |
+
+#### 搭配规则
+
+- **超大字体必须搭配轻量副标题**：`text-6xl font-extrabold` + `text-lg font-light text-gray-300`
+- **关键词用渐变高亮**：部分文字使用 `.text-gradient-apple` 引导视觉焦点
+- **卡片内容底部对齐**：使用 `flex flex-col justify-end` 让大字压在卡片底部
+- **留白即信息**：大字体卡片至少保持 40% 面积留白，不要填满
+
+#### 字号选择参考
+
+| 卡片类型 | 推荐字号 | 示例 |
+|----------|---------|------|
+| Hero 大卡片（col-span-7+） | `text-[12rem]` ~ `text-[16rem]` | 单个数字或字母 |
+| 中卡片（col-span-5） | `text-6xl` ~ `text-7xl` | 2-4 个词的产品名 |
+| 小卡片（col-span-3~4） | `text-4xl` ~ `text-5xl` | 产品名 + 版本号 |
+| 居中单卡片 | `text-6xl` ~ `text-8xl` | 品牌名或核心词 |
 
 ### 文字质感增强
 
@@ -963,7 +1005,10 @@ A: 将 `brightness(1.4)` 降低到 `brightness(1.2)` 或 `brightness(1.1)`，尤
 
 ## 版本历史
 
-### v1.1.0（当前版本）
+### v1.1.1（当前版本）
+- **排版指南**：新增超大字体（Display Typography）使用指南 — 适用场景、禁区、搭配规则、字号选择参考
+
+### v1.1.0
 - **P0 方向性高光**：shine 层从均匀 inset shadow 升级为左上亮右下暗 + radial-gradient 光斑
 - **P0 边缘集中折射**：新增内联径向位移贴图 SVG 方案，中心清晰、边缘折射
 - **P1 brightness 增益**：effect 层 backdrop-filter 增加 `brightness(1.4)` 透镜增亮
