@@ -1,0 +1,10 @@
+# AI Video Maker — Python Dependencies
+google-genai>=1.0.0
+Pillow>=10.0.0
+PyYAML>=6.0
+
+# Optional: Edge-TTS (free alternative to Gemini TTS)
+# pip install edge-tts
+
+# Optional: Dynamic subtitles (word-by-word karaoke effect)
+# pip install whisperx pysubs2

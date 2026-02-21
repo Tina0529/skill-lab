@@ -1,0 +1,111 @@
+# AI Video Maker — Project Configuration
+# Copy this file to your project directory and customize.
+#
+# Usage:
+#   python3 scripts/pipeline.py --config project.yaml
+#   python3 scripts/pipeline.py --config project.yaml --preset shorts
+
+# Project output directory (all generated files go here)
+project_dir: ./my-video-project
+
+# --- TTS Configuration ---
+tts:
+  provider: gemini            # gemini | edge
+  voice: Leda                 # Gemini voices: Leda(知性女声) / Kore(明亮女声) / Aoede(温暖女声)
+                              #                Puck(活泼男声) / Charon(沉稳男声) / Zephyr(中性)
+                              # Edge voices: zh-CN-XiaoxiaoNeural / zh-CN-YunxiNeural / etc.
+  api_key_env: GEMINI_API_KEY # Environment variable name for API key
+  speed: 1.0                  # Speed multiplier (1.0 = normal, 1.1 = slightly faster)
+  max_retries: 3
+  retry_delay: 5.0
+
+# --- Image Generation Configuration ---
+image_gen:
+  provider: gemini             # gemini | pillow_fallback
+  model: gemini-3-pro-image-preview
+  api_key_env: GEMINI_API_KEY
+  style_prompt: ""             # Global style suffix for all image prompts
+                               # Example: "Professional flat illustration, blue and white tech aesthetic"
+  max_retries: 3
+  retry_delay: 5.0
+
+# --- Subtitle Configuration ---
+subtitle:
+  mode: static                 # static (burn to image) | dynamic (ASS karaoke word-by-word)
+  style: boxed                 # boxed (semi-transparent box) | outlined (white text + black outline)
+                               # Only used in static mode
+  font_path: /System/Library/Fonts/STHeiti Medium.ttc  # Chinese font path (static mode)
+  font_name: STHeiti           # ASS font name (dynamic mode)
+  font_size: 36
+  outline_width: 2             # Only for outlined style
+  box_alpha: 160               # Only for boxed style (0-255, higher = more opaque)
+  box_padding: 14
+  box_radius: 8
+  margin_bottom: 50
+  line_spacing: 10
+  image_shrink: 1.0            # Set to 0.92 for outlined style to prevent bottom clipping
+  karaoke: true                # Word-by-word highlighting (dynamic mode only)
+  language: zh                 # Language for forced alignment (dynamic mode)
+
+# --- BGM (Background Music) Configuration ---
+bgm:
+  enabled: false               # Set to true to add background music
+  file: ""                     # Path to BGM audio file (mp3/wav/m4a)
+  volume: 0.15                 # BGM volume relative to voiceover (0.0-1.0)
+  fade_in: 2.0                 # BGM fade-in duration (seconds)
+  fade_out: 3.0                # BGM fade-out duration (seconds)
+
+# --- Video Configuration ---
+video:
+  fps: 30
+  width: 1920
+  height: 1080
+  resolution_preset: ""        # "" (use width/height) | youtube | shorts | instagram | xiaohongshu | bilibili
+                               # When set, overrides width/height with preset values
+  adapt_strategy: ""           # "" (auto from preset) | crop_center | letterbox | blur_fill
+                               # How to adapt images when aspect ratio doesn't match
+  kb_scale: 1.08               # Ken Burns zoom scale (1.08 = 8% zoom)
+  transition_dur: 0.8          # Transition duration in seconds
+  transitions:                 # Transition effects (cycled through)
+    - fade
+    - fadeblack
+    - slideleft
+    - dissolve
+    - fadewhite
+  fade_in: 1.0                 # Opening fade-in duration
+  fade_out: 1.5                # Closing fade-out duration
+  buffer: 0.5                  # Extra pause after each page's audio
+  crf: 20                      # Video quality (0-51, lower = better, 20 is good)
+  preset: medium               # Encoding speed: ultrafast/fast/medium/slow
+
+# --- Pages ---
+# Each page = 1 image + 1 voiceover + 1 subtitle
+# Recommended: 8-12 pages, 15-35 seconds narration per page
+pages:
+  - page: 1
+    narration: |
+      大家好，欢迎来到我们的频道。今天给大家介绍一个非常有意思的话题。
+    subtitle: "大家好\n欢迎来到我们的频道"
+    image_prompt: >
+      A welcoming modern tech illustration, 1920x1080 landscape.
+      Large Chinese title text "欢迎" prominently placed at center.
+      Clean blue gradient background with subtle geometric patterns.
+      Professional, inviting atmosphere.
+
+  - page: 2
+    narration: |
+      你有没有遇到过这样的情况？想做一个科普视频，但是不会拍摄、不会剪辑。
+      今天我来告诉你，用AI就能全自动生成一个完整的视频。
+    subtitle: "想做科普视频\n但不会拍摄剪辑？\nAI帮你全自动生成"
+    image_prompt: >
+      A split-screen illustration showing frustration vs solution, 1920x1080.
+      Left side: confused person with video editing software.
+      Right side: happy person with AI robot assistant.
+      Chinese text "AI自动生成视频" at bottom.
+      Modern flat style, vibrant colors.
+
+  # Add more pages here...
+  # Tips:
+  #   - narration: write conversational, 15-35 seconds spoken text
+  #   - subtitle: condensed version, 2-3 lines, <=20 chars per line
+  #   - image_prompt: write in English, >=80 words, specify 1920x1080

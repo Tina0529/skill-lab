@@ -1,0 +1,21 @@
+# Pipeline outputs (generated per project, not part of skill)
+audio/
+images/
+images_sub/
+subtitles/
+segments/
+video/
+*.wav
+*.mp4
+*.png
+!scripts/project_template.yaml
+
+# Pipeline state
+.pipeline_state.json
+validation_report.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
