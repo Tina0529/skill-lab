@@ -81,6 +81,8 @@ Step 4: ffmpeg 合成 (video_service.py)          → video/final_subtitled.mp4
 Step 5: BGM 混音 (bgm_service.py, 可选)        → video/final_with_bgm.mp4
   ↓
 Step 6: 质量校验 (validator.py, 自动)           → validation_report.json
+  ↓
+Step 7: 封面生成 (Gemini Image API)            → images/cover.png + images/cover_4x3.png
 ```
 
 ### 模块结构
@@ -284,6 +286,60 @@ Large Chinese title text "[中文标题]" prominently placed at [position].
 
 ---
 
+## 封面生成（Step 7 - 视频完成后必须执行）
+
+视频生成完成后，**必须生成两种比例的封面图**：
+
+### 两种封面格式
+
+| 格式 | 尺寸 | 比例 | 用途 | 输出路径 |
+|------|------|------|------|---------|
+| 16:9 | 1920x1080 | 16:9 | 视频播放页封面 | `images/cover.png` |
+| 4:3 | 1440x1080 或 1200x900 | 4:3 | B站首页推荐缩略图 | `images/cover_4x3.png` |
+
+> **B站首页推荐流使用 4:3 封面**，如果只有 16:9 会被自动裁切导致关键信息丢失。
+
+### 生成方式
+
+使用 Gemini Image API（与 image_service.py 相同的 `generate_content` + `response_modalities=["IMAGE", "TEXT"]` 方式）：
+
+```python
+from google import genai
+client = genai.Client()
+# 16:9 封面
+response_16x9 = client.models.generate_content(
+    model="gemini-2.0-flash-exp",
+    contents="Generate a 1920x1080 cover image. [封面描述 prompt]",
+    config={"response_modalities": ["IMAGE", "TEXT"]},
+)
+# 4:3 封面
+response_4x3 = client.models.generate_content(
+    model="gemini-2.0-flash-exp",
+    contents="Generate a 1200x900 (4:3 aspect ratio) cover image. [封面描述 prompt]",
+    config={"response_modalities": ["IMAGE", "TEXT"]},
+)
+```
+
+### 封面 Prompt 要点
+
+- 封面要**吸引眼球**：高对比度、大标题文字、视觉冲击力
+- 包含视频核心主题的**中文标题**（简短版，不是完整视频标题）
+- 与视频内页保持**统一视觉风格**（配色、字体风格）
+- 4:3 版本注意**构图居中**，因为尺寸更窄，边缘内容要收紧
+- **不使用 emoji 图标**，用线性图标或纯文字排版
+
+### 封面 Prompt 模板
+
+```
+Create an eye-catching video cover image, [尺寸].
+[视觉风格描述，与视频内页一致].
+Large bold Chinese title "[标题关键词]" prominently displayed.
+[核心视觉元素]. High contrast, clean layout.
+No emoji icons. Professional and modern.
+```
+
+---
+
 ## 技术细节
 
 ### Ken Burns 效果
@@ -396,7 +452,9 @@ my-video-project/
 │   └── ...
 ├── images/                   # AI 图片（自动生成）
 │   ├── page_01.png
-│   └── ...
+│   ├── ...
+│   ├── cover.png             # 16:9 封面（1920x1080）
+│   └── cover_4x3.png         # 4:3 封面（B站首页推荐用）
 ├── images_sub/               # 带字幕的图片（自动生成，static 模式）
 ├── subtitles/                # ASS 字幕文件（自动生成，dynamic 模式）
 ├── segments/                 # 单页视频片段（自动生成）
