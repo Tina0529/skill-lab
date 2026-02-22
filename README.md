@@ -12,6 +12,8 @@ Claude Code Skills collection - AI-powered automation tools.
 | [model-deprecation-monitor](./model-deprecation-monitor) | AI model deprecation monitoring & alerting for OpenAI, Anthropic, Google, AWS Bedrock, Azure | Active |
 | [lark-connector](./lark-connector) | Lark/飞书集成：消息、文档、任务管理 | Active |
 | [liquid-glass-ui](./liquid-glass-ui) | 液态玻璃风格 HTML 页面生成器 | Active |
+| [pmbook](./pmbook) | PM 项目记忆系统：会议纪要、决策记录、风险追踪、Action Items、周报/月报自动生成 | Active |
+| [pm](./pm) | `/pm` 快捷别名，重定向到 `/pmbook` | Active |
 
 ## Usage
 
